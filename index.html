@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Image</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Image</h1>
+        <label for="upload-background">Upload Background Image:</label>
+        <input type="file" id="upload-background" accept="image/*">
+        <label for="upload-overlay">Upload Overlay Image:</label>
+        <input type="file" id="upload-overlay" accept="image/*">
+        
+        <div class="controls">
+            <label for="width">Width:</label>
+            <input type="number" id="width" placeholder="100" min="1">
+            <label for="height">Height:</label>
+            <input type="number" id="height" placeholder="100" min="1">
+            <button id="resize-image">Resize Image</button>
+            <button id="merge-images">Merge Images</button>
+        </div>
+        
+        <div class="text-controls">
+            <label for="text">Text:</label>
+            <input type="text" id="text" placeholder="Text">
+            <div class="color-picker">
+                <label for="text-color">Text Color:</label>
+                <input type="color" id="text-color" value="#FFFFFF">
+            </div>
+            <button id="add-text">Add Text</button>
+        </div>
+        
+        <div id="image-container"></div>
+        <a id="download" href="#" download="edited-image.png">Download Image</a>
+    </div>
+
+    <script>
+        const uploadBackground = document.getElementById('upload-background');
+        const uploadOverlay = document.getElementById('upload-overlay');
+        const imageContainer = document.getElementById('image-container');
+        const resizeImageButton = document.getElementById('resize-image');
+        const mergeImagesButton = document.getElementById('merge-images');
+        const addTextButton = document.getElementById('add-text');
+        const downloadLink = document.getElementById('download');
+        const widthInput = document.getElementById('width');
+        const heightInput = document.getElementById('height');
+        const textInput = document.getElementById('text');
+        const textColorInput = document.getElementById('text-color');
+
+        let backgroundImg = null;
+        let overlayImg = null;
+
+        function clearContainer() {
+            imageContainer.innerHTML = '';
+        }
+
+        function updateDownloadLink(canvas) {
+            const editedImageUrl = canvas.toDataURL('image/png');
+            downloadLink.href = editedImageUrl;
+            downloadLink.style.display = 'inline';
+        }
+
+        function handleImageUpload(input, callback) {
+            input.addEventListener('change', function () {
+                const file = this.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        img.onload = function () {
+                            callback(img);
+                        }
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        handleImageUpload(uploadBackground, (img) => {
+            backgroundImg = img;
+            updateImageContainer();
+        });
+
+        handleImageUpload(uploadOverlay, (img) => {
+            overlayImg = img;
+            updateImageContainer();
+        });
+
+        function updateImageContainer() {
+            clearContainer();
+            if (backgroundImg) {
+                const wrapper = createImageWrapper(backgroundImg, 'background-img');
+                imageContainer.appendChild(wrapper);
+            }
+            if (overlayImg) {
+                const wrapper = createImageWrapper(overlayImg, 'overlay-img');
+                imageContainer.appendChild(wrapper);
+            }
+        }
+
+        function createImageWrapper(img, id) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-wrapper';
+            img.id = id;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            wrapper.appendChild(img);
+            return wrapper;
+        }
+
+        resizeImageButton.addEventListener('click', function () {
+            const width = parseInt(widthInput.value);
+            const height = parseInt(heightInput.value);
+            if (backgroundImg && width > 0 && height > 0) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+
+                updateDownloadLink(canvas);
+                clearContainer();
+                const resizedImg = new Image();
+                resizedImg.src = canvas.toDataURL('image/png');
+                imageContainer.appendChild(createImageWrapper(resizedImg, 'resized-img'));
+            }
+        });
+
+        mergeImagesButton.addEventListener('click', function () {
+            if (backgroundImg && overlayImg) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const width = Math.max(backgroundImg.naturalWidth, overlayImg.naturalWidth);
+                const height = Math.max(backgroundImg.naturalHeight, overlayImg.naturalHeight);
+                canvas.width = width;
+                canvas.height = height;
+
+                ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 0.5; // Adjust opacity for the overlay
+                ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+
+                updateDownloadLink(canvas);
+                clearContainer();
+                const combinedImg = new Image();
+                combinedImg.src = canvas.toDataURL('image/png');
+                imageContainer.appendChild(createImageWrapper(combinedImg, 'combined-img'));
+            }
+        });
+
+        addTextButton.addEventListener('click', function () {
+            if (backgroundImg) {
+                const text = textInput.value;
+                const textColor = textColorInput.value;
+                if (text) {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = backgroundImg.naturalWidth;
+                    canvas.height = backgroundImg.naturalHeight;
+                    ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+
+                    ctx.font = '30px Arial';
+                    ctx.fillStyle = textColor;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+                    updateDownloadLink(canvas);
+                    clearContainer();
+                    const textImg = new Image();
+                    textImg.src = canvas.toDataURL('image/png');
+                    imageContainer.appendChild(createImageWrapper(textImg, 'text-img'));
+                }
+            }
+        });
+    </script>
+</body>
+</html>
